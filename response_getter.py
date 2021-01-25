@@ -1,7 +1,8 @@
-import pandas as pd
-
+from matplotlib import pyplot as plt
+import numpy as np
 
 path = 'C:/Users/Przemek/Downloads/Discord UE.csv/Discord UE.csv'
+
 
 def prepare_responses(path):
     with open(path, 'r', encoding='utf8') as raw:
@@ -46,19 +47,24 @@ def prepare_responses(path):
 
 
 def create_pie_chart(question, responses):
-    q = len(responses)
     answers = list(set(responses))
 
-    index = [responses.count(answers[i]) for i in range(q)]
+    # Make a fake dataset:
+    height = [responses.count(answers[i]) for i in range(len(answers))]
+    bars = list(set(responses))
+    y_pos = np.arange(len(bars))
 
-    # --- dataset 1: just 4 values for 4 groups:
-    df = pd.DataFrame(responses, index=index, columns=['x'])
+    # Create bars
+    plt.bar(y_pos, height)
 
-    # make the plot
-    df.plot(kind='pie', subplots=True, figsize=(8, 8))
+    # Create names on the x-axis
+    plt.xticks(y_pos, bars)
+
+    # Show graphic
+    plt.show()
 
 
 questions, responses = prepare_responses(path)
 
 for i in range(2, 6):
-    create_pie_chart(questions[i], [response[i] for response in responses])
+    create_pie_chart(questions[i], [list(response.values())[i] for response in responses])
