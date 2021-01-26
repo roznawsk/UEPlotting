@@ -5,8 +5,10 @@ import textwrap
 
 path = 'C:/Users/Przemek/Downloads/Discord UE.csv/Discord UE.csv'
 theme_colors = ['#FFFFFF', '#9FFFF5', '#E6E6E6']
-graph_colors_table = ['#FF5A5F', '#54494B', '#7C9299', '#543438', '#DC832C', '#0E6267', '#1C5A71',
-                      '#1C5A71', '#7EC199', '#CD413B', '#39224B']
+# graph_colors_table = ['#FF5A5F', '#54494B', '#7C9299', '#543438', '#DC832C', '#0E6267', '#1C5A71',
+#                       '#1C5A71', '#7EC199', '#CD413B', '#39224B']
+
+graph_colors_table = ['#2F3340', '#E3C15B']
 
 
 def graph_colors(q):
@@ -77,35 +79,47 @@ def create_bar_chart(groups, values, title, ylabel='', scale='absolute'):
     plt.show()
 
 
-def create_bar_chart_v2(groups, values, title, limits, ylabel='', colors='blue'):
+def create_bar_chart_v2(groups, values, title, limits, labels, xlabel='', ylabel='', colors='blue'):
     n = len(groups['names'])
 
-    bars = [textwrap.fill(name, 18) for name in groups['names']]
-    y_pos = np.arange(len(bars))
+    bar_width = 0.75 / len(values)
+    bar_shift = 1.1
+
+    x_labels = [textwrap.fill(name, 18) for name in groups['names']]
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.bar(y_pos, values, color=colors)
+    y_pos = [np.arange(len(x_labels))]
+
+    for i in range(1, len(values)):
+        y_pos.append([y_pos[i - 1][j] + bar_width * bar_shift for j in range(len(y_pos[i - 1]))])
+
+    for i, v in enumerate(values):
+        ax.bar(y_pos[i], v, color=colors[i], width=bar_width, label=labels[i])
+
+    y_mid = [y + bar_width * bar_shift * ((len(y_pos) - 1) / 2) for y in y_pos[0]]
+
     plt.ylim(limits)
     plt.ylabel(ylabel)
-    plt.xticks(y_pos, bars)
+    plt.xlabel(xlabel)
+    plt.xticks(y_mid, x_labels)
     plt.title(title)
-
 
     ax.set_facecolor(theme_colors[2])
     fig.set_facecolor(theme_colors[0])
 
     # Show graphic
+    plt.legend()
     plt.show()
 
 
-def get_average_values(indices, data_type):
+def get_average_values(q_indices, p_indices, data_type):
     groups = {'names': []}
     values = []
 
-    for i in indices:
+    for i in q_indices:
         groups['names'].append(str(i))
 
-        data = [responses[j][i][data_type] for j in range(len(responses))
+        data = [responses[j][i][data_type] for j in p_indices
                   if (responses[j][i] and responses[j][i][data_type] != 'inf')]
 
         avg = sum(data) / len(data)
@@ -114,10 +128,7 @@ def get_average_values(indices, data_type):
     return groups, values
 
 
-'''
-task groups nums:
-'''
-
+# task group names
 # total = 32 tasks
 
 admin = [7, 12, 13, 14, 15, 16, 17, 20, 23, 26, 27]  # 11
@@ -129,6 +140,16 @@ settings = [19, 29, 30, 31, 32, 33, 34, 35, 37]  # 9
 ''' Here begins the graph drawing '''
 
 questions, responses = prepare_responses(path)
+
+# people
+
+noobs = [i for i in range(len(responses)) if responses[i][5] in
+         ['Jest to moje pierwsze zetknięcie z tym programem', 'Zdarzyło mi się kiedyś korzystać']]
+
+pros = [i for i in range(len(responses)) if responses[i][5] == 'Korzystam praktycznie codziennie']
+
+print(noobs)
+print(pros)
 
 print(questions)
 print()
@@ -159,15 +180,22 @@ for response in responses:
 for i in friend:
     print(questions[i])
 
-names = ['Server administration tasks', 'Friends related tasks', 'Communication tasks', 'User setting tasks']
+names = ['Server administration tasks', 'Friends related tasks', 'Communication tasks', 'User settings tasks']
 
-limits = {'clicks': (0, 20), 'time': (0, 140), 'hardness': (1, 5)}
+limits = {'clicks': (0, 25), 'time': (0, 210), 'hardness': (0.8, 5)}
+labels = ['New users', 'Long time users']
+xlabel = 'task number'
 
-
+colors = graph_colors(2)
 for category, name in zip([admin, friend, communication, settings], names):
-    colors = graph_colors(len(category))
 
     for data_type in ['clicks', 'time', 'hardness']:
-        groups, values = get_average_values(category, data_type)
-        create_bar_chart_v2(groups, values, name, limits[data_type], data_type, colors)
+        # averages for everybody
+        p_indices = noobs + pros
+        groups, values = get_average_values(category, p_indices, data_type)
+        create_bar_chart_v2(groups, [values], name, limits[data_type], ['All users'], xlabel, data_type, [colors[0]])
 
+        # averages by group
+        _, values_n = get_average_values(category, noobs, data_type)
+        groups, values_p = get_average_values(category, pros, data_type)
+        create_bar_chart_v2(groups, [values_n, values_p], name, limits[data_type], labels, xlabel, data_type, colors[0:2])
