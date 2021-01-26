@@ -5,7 +5,8 @@ import textwrap
 
 path = 'C:/Users/Przemek/Downloads/Discord UE.csv/Discord UE.csv'
 theme_colors = ['#FFFFFF', '#9FFFF5', '#E6E6E6']
-graph_colors_table = ['#FF5A5F', '#54494B', '#7C9299', '#543438', '#DC832C', '#0E6267']
+graph_colors_table = ['#FF5A5F', '#54494B', '#7C9299', '#543438', '#DC832C', '#0E6267', '#1C5A71',
+                      '#1C5A71', '#7EC199', '#CD413B', '#39224B']
 
 
 def graph_colors(q):
@@ -15,7 +16,6 @@ def graph_colors(q):
 def prepare_responses(path):
     with open(path, 'r', encoding='utf8') as raw:
         questions = [q.strip('/"\n') for q in raw.readline().split(sep=',')]
-        print(questions)
 
         # print(len(questions))
 
@@ -23,7 +23,7 @@ def prepare_responses(path):
 
         for line in raw:
 
-            response = dict()
+            response = []
             stack = ''
             appending = False
             i = 0
@@ -34,10 +34,11 @@ def prepare_responses(path):
                     continue
                 elif appending and char == '\"':
                     if ',' in stack or ';' in stack:
-                        nums = [int(n.strip()) if n.strip() != 'inf' else 'inf' for n in stack.replace(',', ';').split(';')]
-                        response[i] = {'clicks': nums[0], 'time': nums[1], 'hardness': nums[2]}
+                        nums = [int(n.strip()) if n.strip() != 'inf' else 'inf' for n in
+                                stack.replace(',', ';').split(';')]
+                        response.append({'clicks': nums[0], 'time': nums[1], 'hardness': nums[2]})
                     else:
-                        response[i] = stack.strip('/"')
+                        response.append(stack.strip('/"'))
 
                     stack = ''
                     appending = False
@@ -46,10 +47,6 @@ def prepare_responses(path):
                     stack += char
 
             responses.append(response)
-
-        print()
-        for response in responses:
-            print(list(response.values()))
 
     return questions, responses
 
@@ -80,35 +77,68 @@ def create_bar_chart(groups, values, title, ylabel='', scale='absolute'):
     plt.show()
 
 
-def create_grouped_bar_plot(groups, values, values_names, title, ylabel=''):
+def create_bar_chart_v2(groups, values, title, limits, ylabel='', colors='blue'):
     n = len(groups['names'])
-
-    bar_width = 0.25
 
     bars = [textwrap.fill(name, 18) for name in groups['names']]
     y_pos = np.arange(len(bars))
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
-
-    for i, v in enumerate(values):
-        ax.bar(y_pos, v, color=graph_colors_table[i], width=bar_width, edgecolor='white', label=values_names[i])
-
+    ax.bar(y_pos, values, color=colors)
+    plt.ylim(limits)
     plt.ylabel(ylabel)
     plt.xticks(y_pos, bars)
     plt.title(title)
 
+
     ax.set_facecolor(theme_colors[2])
     fig.set_facecolor(theme_colors[0])
 
+    # Show graphic
     plt.show()
 
 
+def get_average_values(indices, data_type):
+    groups = {'names': []}
+    values = []
+
+    for i in indices:
+        groups['names'].append(str(i))
+
+        data = [responses[j][i][data_type] for j in range(len(responses))
+                  if (responses[j][i] and responses[j][i][data_type] != 'inf')]
+
+        avg = sum(data) / len(data)
+
+        values.append(avg)
+    return groups, values
+
+
+'''
+task groups nums:
+'''
+
+# total = 32 tasks
+
+admin = [7, 12, 13, 14, 15, 16, 17, 20, 23, 26, 27]  # 11
+friend = [6, 8, 10, 28]  # 4
+communication = [9, 11, 18, 21, 22, 24, 25, 36]  # 8
+settings = [19, 29, 30, 31, 32, 33, 34, 35, 37]  # 9
+
+
+''' Here begins the graph drawing '''
 
 questions, responses = prepare_responses(path)
 
+print(questions)
+print()
+for response in responses:
+    print(response)
+
 # #sex
 # groups = {'names': ['Women', 'Men'], 'content': ['Kobieta', 'Mężczyzna']}
-# create_bar_chart(groups, [r[3] for r in responses], 'Sex', '%', scale='percent')
+# create_bar_chart(groups, [r[3] for r in responses], 'Sex', 'Count')
+
 #
 # #age
 # groups = {'names': ['<=18', '19-22', '>22'], 'content': [range(0, 19), range(19, 23), range(23, 100)]}
@@ -125,21 +155,19 @@ questions, responses = prepare_responses(path)
 #                       'Korzystam sporadycznie', 'Korzystam praktycznie codziennie']}
 # create_bar_chart(groups, [r[5] for r in responses], 'Familiarity with discord', 'Count')
 
-'''
-task groups nums:
-'''
-
-#total = 32 tasks
-
-admin = [7, 12, 13, 14, 15, 16, 17, 20, 23, 26, 27]  #11
-friend = [6, 8, 10, 28] #4
-communication = [9, 11, 18, 21, 22, 24, 25, 36]    #8
-settings = [19, 29, 30, 31, 32, 33, 34, 35, 37]     #9
 
 for i in friend:
+    print(questions[i])
+
+names = ['Server administration tasks', 'Friends related tasks', 'Communication tasks', 'User setting tasks']
+
+limits = {'clicks': (0, 20), 'time': (0, 140), 'hardness': (1, 5)}
 
 
+for category, name in zip([admin, friend, communication, settings], names):
+    colors = graph_colors(len(category))
 
+    for data_type in ['clicks', 'time', 'hardness']:
+        groups, values = get_average_values(category, data_type)
+        create_bar_chart_v2(groups, values, name, limits[data_type], data_type, colors)
 
-# for task in range(first_task, last_task):
-#     groups = {'names': }
